@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DentaBased Register</title>
+  <link rel="stylesheet" href="register.css" />
+</head>
+<body>
+  <div class="register-container">
+    <form id="registerForm">
+      <h2>Create a new account</h2>
+
+      <!-- Patient Type -->
+      <div class="form-group patient-type">
+        <label><input type="radio" name="patient_type" value="new" required /> New Patient</label>
+        <label><input type="radio" name="patient_type" value="returning" /> Old Patient</label>
+      </div>
+
+      <!-- Name -->
+      <div class="form-group name-fields">
+        <input type="text" name="first_name" placeholder="First name" required />
+        <input type="text" name="last_name" placeholder="Last name" required />
+      </div>
+
+      <!-- Birthday -->
+      <div class="form-group">
+        <label>Birthday</label>
+        <div class="birthday-fields">
+          <select name="birth_month" required>
+            <option value="">Month</option>
+            <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+            <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+            <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+          </select>
+          <select name="birth_day" required>
+            <option value="">Day</option>
+            <script>
+              for(let i=1;i<=31;i++) {
+                document.write(`<option value="${i}">${i}</option>`);
+              }
+            </script>
+          </select>
+          <select name="birth_year" id="birthYear" onchange="checkAge()" required>
+            <option value="">Year</option>
+            <script>
+              const year = new Date().getFullYear();
+              for(let i=year; i>=1900; i--) {
+                document.write(`<option value="${i}">${i}</option>`);
+              }
+            </script>
+          </select>
+        </div>
+      </div>
+
+      <!-- Gender -->
+      <div class="form-group gender-fields">
+        <label><input type="radio" name="gender" value="Female" required /> Female</label>
+        <label><input type="radio" name="gender" value="Male" /> Male</label>
+        <label><input type="radio" name="gender" value="Custom" /> Custom</label>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="form-group">
+        <input type="tel" name="contact" placeholder="Contact Number" required />
+      </div>
+      <div class="form-group">
+        <input type="text" name="address" placeholder="Home Address" required />
+      </div>
+      <div class="form-group">
+        <input type="text" name="occupation" placeholder="Occupation" />
+      </div>
+
+      <!-- Guardian Fields (hidden unless age < 18) -->
+      <div id="guardian-fields" style="display: none;">
+        <div class="form-group">
+          <input type="text" name="guardian_name" placeholder="Parent/Guardian Name" />
+        </div>
+        <div class="form-group">
+          <input type="tel" name="guardian_contact" placeholder="Guardian Contact Number" />
+        </div>
+      </div>
+
+      <!-- Email and Password -->
+      <div class="form-group">
+        <input type="email" name="email" placeholder="Email address" required />
+      </div>
+      <div class="form-group">
+        <input type="password" name="password" placeholder="New password" required />
+      </div>
+
+      <button type="submit">Sign Up</button>
+      <p class="login-link"><a href="/login.html">Already have an account?</a></p>
+    </form>
+  </div>
+
+  <!-- Guardian age check -->
+  <script>
+    function checkAge() {
+      const yearInput = document.getElementById("birthYear").value;
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - parseInt(yearInput);
+      const guardianFields = document.getElementById("guardian-fields");
+      guardianFields.style.display = age < 18 ? "block" : "none";
+    }
+  </script>
+
+  <!-- Firebase Setup + Registration Handler -->
+  <script type="module">
+    // Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAowFiw5_LXhFMvKKGNBNFKID0SYjq_6os",
+      authDomain: "dentabase-50fb6.firebaseapp.com",
+      projectId: "dentabase-50fb6",
+      storageBucket: "dentabase-50fb6.appspot.com",
+      messagingSenderId: "246769972912",
+      appId: "1:246769972912:web:e444aca1809705c4802d75",
+      measurementId: "G-5DJ0D8X97N"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Form Handler
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const form = e.target;
+      const email = form.email.value;
+      const password = form.password.value;
+      const first_name = form.first_name.value;
+      const last_name = form.last_name.value;
+      const contact = form.contact.value;
+      const address = form.address.value;
+      const occupation = form.occupation.value;
+      const gender = form.gender.value;
+      const patient_type = form.patient_type.value;
+      const birth_year = form.birth_year.value;
+      const birth_month = form.birth_month.value;
+      const birth_day = form.birth_day.value;
+      const guardian_name = form.guardian_name.value;
+      const guardian_contact = form.guardian_contact.value;
+
+      try {
+        // Create user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Save patient details
+        await setDoc(doc(db, "patients", user.uid), {
+          email,
+          first_name,
+          last_name,
+          contact,
+          address,
+          occupation,
+          gender,
+          patient_type,
+          birth_date: `${birth_month} ${birth_day}, ${birth_year}`,
+          guardian_name: guardian_name || null,
+          guardian_contact: guardian_contact || null,
+          created_at: new Date()
+        });
+
+        alert("Registration successful!");
+        form.reset();
+        document.getElementById("guardian-fields").style.display = "none"; // Hide again after reset
+      } catch (error) {
+        alert("Error: " + error.message);
+        console.error(error);
+      }
+    });
+  </script>
+</body>
+</html>
